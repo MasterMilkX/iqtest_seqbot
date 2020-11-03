@@ -1,0 +1,32 @@
+{
+  "test_suites": {
+    "seq": [
+      "seq-public"
+    ],
+    "diagram": [
+      "logic-diagram-public",
+      "T1-105-public",
+      "T106-210-public",
+      "T211-315-public",
+      "T316-411-public",
+      "T412-516-public"
+    ],
+    "verbal": [
+      "verbal-E-public",
+      "logic-E-public",
+      "verbal1-public"
+    ]
+  },
+  "version": "0.2.5",
+  "prev": "0.1",
+  "version_log": {
+    "0.1": "\nupdate data_file_name.json for test case\nupdate data_file_name.answer.json for answers\n",
+    "0.2": "\nadd verbal1-public.json case\n",
+    "0.2.1.1": "\nadd T1-105-public.json case\n",
+    "0.2.1.2": "\nfix T1-105-public.json case\n",
+    "0.2.2": "\nupdate data\n",
+    "0.2.3": "\nupdate some data\n",
+    "0.2.4": "\nadd more train data, fix inconsistency\n",
+    "0.2.5": "\nrelease test data set\n"
+  }
+}
