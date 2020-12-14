@@ -247,7 +247,7 @@ def getClosestOption(a,opt):
     d = []
     for i in opt:
         d.append(abs(a-floatConv(i)))
-    return d.index(min(d))
+    return d.index(min(d))+1
 
 
 #predict a sequence using the model options
@@ -270,9 +270,9 @@ def predictSeq(classifier,seq,options=[]):
 
         a = np.squeeze(m.predict(test))[0]
         if len(options) != 0:
-            return getClosestOption(a)
+            return getClosestOption(a,options)
         else:
-            return 
+            return a
 
     elif classType == 1:     #index only
         m = makeIndexModel()
@@ -281,7 +281,7 @@ def predictSeq(classifier,seq,options=[]):
 
         a = np.squeeze(m.predict(test))[0]
         if len(options) != 0:
-            return getClosestOption(a)
+            return getClosestOption(a,options)
         else:
             return a
 
