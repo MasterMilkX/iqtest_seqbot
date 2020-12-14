@@ -270,9 +270,9 @@ def predictSeq(classifier,seq,options=[]):
 
         a = np.squeeze(m.predict(test))[0]
         if len(options) != 0:
-            return getClosestOption(a,options), "hybrid", a
+            return getClosestOption(a,options)
         else:
-            return a, "hybrid", a
+            return a
 
     elif classType == 1:     #index only
         m = makeIndexModel()
@@ -281,9 +281,9 @@ def predictSeq(classifier,seq,options=[]):
 
         a = np.squeeze(m.predict(test))[0]
         if len(options) != 0:
-            return getClosestOption(a,options), "index", a
+            return getClosestOption(a,options)
         else:
-            return a, "index", a
+            return a
 
     else:       #do all 3 and take most combined or average
         m1 = makeRecursiveModel()
@@ -307,7 +307,6 @@ def predictSeq(classifier,seq,options=[]):
         a1 = np.squeeze(m1.predict(test1))
         a2 = np.squeeze(m2.predict(test2))
         a3 = np.squeeze(m3.predict(test3))
-        raw = np.squeeze(m3.predict(test3))     #use hybrid for raw approx
 
         final_a = None
 
@@ -319,7 +318,7 @@ def predictSeq(classifier,seq,options=[]):
         #return majority answer
         ans = [a1,a2,a3]
         final_a = max(set(ans), key = ans.count) 
-        return final_a, "unknown", raw
+        return final_a
 
 
 # evaluate the training data
@@ -340,26 +339,26 @@ def evalTrain():
     correct = []
     resp = {}
     with tqdm(total=len(trainSeq)) as pbar:
+        t = 0
         for i,s in trainSeq.items():
             if(not i in answers):
                 continue
 
             try:
-                a, rawAns, classPred = predictSeq(class_model, s, opts[i])
+                a = int(predictSeq(class_model, s, opts[i]))
                 print(a)
                 print(answers[i][0])
-                if len(opts) > 1:
-                    correct.append(1 if a == answers[i][0] else 0)
-                    resp[i] = [a,answers[i][0],classPred,rawAns]
-                else:
-                    correct.append(1 if a == floatConv(answers[i]) else 0)
-                    resp[i] = [a,answers[i],classPred,rawAns]
+                correct.append(1 if a == answers[i][0] else 0)
+                resp[i] = [a,answers[i]]
             except KeyboardInterrupt:
                 exit(0)
             except:
                 print(sys.exc_info()[0])
 
             pbar.update(1)
+            t+=1
+            if t > 3:
+                break
 
     tot_correct = sum(correct)
     #print accuracy
@@ -388,19 +387,19 @@ def testOut():
     #get predictions
     outAns = {}
     with tqdm(total=len(testSeq)) as pbar:
+        t = 0
         for i,s in testSeq.items():
             try:
                 a = predictSeq(class_model,s,opts[i])
-                if len(opts[i]) > 1:
-                    print(str(s) + " -> " + str(opts[i][a-1])) 
-                else:
-                    print(str(s) + " -> " + str(a)) 
                 outAns[i] = a
             except KeyboardInterrupt:
                 exit(0)
             except:
                 print(sys.exc_info()[0])
             pbar.update(1)
+            t+=1
+            if t > 3:
+                break
 
     #export to json
     j = {}
@@ -417,7 +416,7 @@ if __name__ == "__main__":
     print(acc)
     for k, v in responses.items():
         print(str(k) + ":" + str(v))
-    #testOut()
+    testOut()
 
 
 
