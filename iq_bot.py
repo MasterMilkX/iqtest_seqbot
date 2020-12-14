@@ -11,6 +11,10 @@ import random
 from keras.layers import Bidirectional
 from matplotlib import pyplot
 import json
+from keras.preprocessing.sequence import pad_sequences
+from tqdm import tqdm
+import sys
+
 
 
 '''
@@ -18,6 +22,32 @@ import json
     SEQUENCE PARSER
 
 '''
+
+#prep for classifier
+def seq_prep(s, max_len):
+    seq = s[:]
+
+    question = [] #position of question mark
+    seq_len = []
+    for i in range(len(seq)):
+        question.append(seq[i].index('?'))
+        seq_len.append(len(seq[i]))
+        seq[i][question[i]] = 0
+    seq = pad_sequences(seq, padding='post', maxlen=max_len)
+    seq = seq.tolist()
+    mask = []
+    for i in range(len(seq)):
+        mask.append([0] * max_len)
+    for i in range(len(mask)):
+        for j in range(seq_len[i]):
+            mask[i][j] = 1  #assign 1 in the mask sequence for actual values in sequence
+    for i in range(len(mask)):
+        mask[i][question[i]] = 2 #assign 2 in the mask sequence for question mark position
+    seq2 = []
+    for i in range(len(seq)):
+        seq2.append(seq[i]+mask[i])
+    return np.array([np.array(seq2).transpose()])
+
 #cleans up sequences
 def txt2seq(seq):
     s2 = []
@@ -27,6 +57,18 @@ def txt2seq(seq):
         a = [e for e in a if e != ""]  #remove empty strings
         s2.append(a)
     return s2
+
+#checks for valid sequences (all numbers or fractions excluding ?)
+def findBadSeq(seq):
+    badSeqs = {}
+    for a in range(len(seq)):     #check each sequence
+        s = seq[a]
+        for i in s:   #check each item (assuming sequence is already split)
+            if(re.match(r'[^0-9\/\?]',i)):    #check if any words or weird characters in the sequence
+                badSeqs[a] = s
+                break
+    return badSeqs
+
 
 #remove bad sequences from good sequences
 def remBadSeq(seq):
@@ -64,7 +106,7 @@ def makeSeq(dataPath):
     #read in the raw data
     seqdataIn = pd.read_json(dataPath, orient='records')
     sequences = seqdataIn['stem']
-    options = seqdataIn['options']
+    opts = seqdataIn['options']
 
     split_seq = txt2seq(sequences)
 
@@ -72,7 +114,7 @@ def makeSeq(dataPath):
 
     fs = seq2Float(gs)
 
-    return fs, options
+    return fs, opts
 
 
 
@@ -96,7 +138,7 @@ def seq2IndData(seq):
         d_input.append([[i]])
         d_output.append([[seq[i]]])
 
-    return d_input, d_output
+    return np.array(d_input), np.array(d_output), np.array(test)
 
 
 #turn sequence into recursive based data 
@@ -105,18 +147,37 @@ def seq2RecData(seq,look):
     d_output = []
     test = []
 
+    for i in range(len(seq)-2):
+        if(seq[i+2] == "?"):
+            test.append([[seq[i]],[seq[i+1]]])
+        elif seq[i] != "?" and seq[i+1] != "?":
+            d_input.append([[seq[i]],[seq[i+1]]])
+            d_output.append([[seq[i+2]]])
+
+    '''
     train_gen = TimeseriesGenerator(seq, seq, length=look, batch_size=1)
     for i in range(len(train_gen)):
         x, y = train_gen[i]
 
-        if(y[0][1] == "?"): #add test
-            test.append(x)
+        if(y[0] == "?"): #add test
+            u = []
+            for a in x[0]:
+                if(a == "?"):
+                    continue
+                u.append([a])
+            test.append(u)
             continue
 
-        d_input.append(x)
+        e = []
+        for b in x[0]:
+            if(b == "?"):
+                continue
+            e.append([b])
+        d_input.append(e)
         d_output.append(y)
+    '''
 
-    return d_input, d_output
+    return np.array(d_input), np.array(d_output), np.array(test)
 
 def seq2HybridData(seq):
     d_input = []
@@ -133,7 +194,7 @@ def seq2HybridData(seq):
         d_input.append([[seq[i]],[i]])
         d_output.append([[seq[i+1]]])
 
-    return d_input, d_output, test
+    return np.array(d_input), np.array(d_output), np.array(test)
 
 
 
@@ -141,7 +202,7 @@ def seq2HybridData(seq):
 def makeRecursiveModel():
     # Simple LSTM - softplus Activation
     fib_model = Sequential()
-    fib_model.add(LSTM(50, activation='softplus', input_shape=(fib_look, 1)))
+    fib_model.add(LSTM(50, activation='softplus', input_shape=(2, 1)))
     fib_model.add(Dense(1))
     adam = keras.optimizers.Adam(lr=0.01)
     fib_model.compile(optimizer=adam, loss='mse',metrics=['mse'])
@@ -190,35 +251,33 @@ def getClosestOption(a,opt):
 
 
 #predict a sequence using the model options
-def predictSeq(seq,options=[]):
-    #classType = classifier(seq)        #get response from the classifier 
+def predictSeq(classifier,seq,options=[]):
+    #print(seq)
+
+    if seq.count('?') > 1 or "?" not in seq:     #too many or too few
+        return 0
+
+    #classify sequence
+    s = seq[:]
+    classGuesses = classifier.predict(seq_prep([s],17)).tolist()        #get response from the classifier 
+    classType = classGuesses.index(max(classGuesses))
 
 
-    if classType == 3:      #unknown
+    if classType == 2:      #hybrid
         m = makeHybridModel()
         x, y, test = seq2HybridData(seq)
-        m.fit(x, y, epochs=1000, validation_split=0.0, verbose=0)
+        m.fit(x, y, epochs=1000, validation_split=0.0, verbose=0,steps_per_epoch=len(x))
 
         a = np.squeeze(m.predict(test))[0]
         if len(options) != 0:
             return getClosestOption(a)
         else:
             return 
-    else if classType == 2:
+
+    elif classType == 1:     #index only
         m = makeIndexModel()
         x, y, test = seq2IndData(seq)
-        m.fit(x, y, epochs=500, validation_split=0.0, verbose=0)
-
-        a = np.squeeze(m.predict(test))[0]
-        if len(options) != 0:
-            return getClosestOption(a)
-        else:
-            return a
-
-    else if classType == 1:
-        m = makeRecursiveModel()
-        x, y, test = seq2RecData(seq,2)
-        m.fit(x, y, epochs=500, validation_split=0.0, verbose=0)
+        m.fit(x, y, epochs=500, validation_split=0.0, verbose=0,steps_per_epoch=len(x))
 
         a = np.squeeze(m.predict(test))[0]
         if len(options) != 0:
@@ -235,23 +294,31 @@ def predictSeq(seq,options=[]):
         x2, y2, test2 = seq2IndData(seq)
         x3, y3, test3 = seq2HybridData(seq)
 
-        m1.fit(x1, y1, epochs=500, validation_split=0.0, verbose=0)
-        m2.fit(x2, y2, epochs=500, validation_split=0.0, verbose=0)
-        m3.fit(x3, y3, epochs=1000, validation_split=0.0, verbose=0)
+        '''
+        print(x1)
+        print(x2)
+        print(x3)
+        '''
 
-        a1 = np.squeeze(m1.predict(test))[0]
-        a2 = np.squeeze(m2.predict(test))[0]
-        a3 = np.squeeze(m3.predict(test))[0]
+        m1.fit(x1, y1, epochs=500, validation_split=0.0, verbose=0,steps_per_epoch=len(x1))
+        m2.fit(x2, y2, epochs=500, validation_split=0.0, verbose=0,steps_per_epoch=len(x2))
+        m3.fit(x3, y3, epochs=1000, validation_split=0.0, verbose=0,steps_per_epoch=len(x3))
+
+        a1 = np.squeeze(m1.predict(test1))
+        a2 = np.squeeze(m2.predict(test2))
+        a3 = np.squeeze(m3.predict(test3))
 
         final_a = None
 
         if len(options) != 0:
-            a1 = getClosestOption(a1)
-            a2 = getClosestOption(a2)
-            a3 = getClosestOption(a3)
+            a1 = getClosestOption(a1,options)
+            a2 = getClosestOption(a2,options)
+            a3 = getClosestOption(a3,options)
 
+        #return majority answer
         ans = [a1,a2,a3]
         final_a = max(set(ans), key = ans.count) 
+        return final_a
 
 
 # evaluate the training data
@@ -259,35 +326,68 @@ def evalTrain():
     pathTrain = "data/seq-public.json"
     pathAns = 'data/seq-public.answer.json'
 
+    class_model = keras.models.load_model("classifier")
+
     #parse the sequences
-    trainSeq, ansOptions = makeSeq(pathTrain)
+    trainSeq, opts = makeSeq(pathTrain)
 
     #get the answers and answer options
     ansDatIn = pd.read_json(pathAns, orient='index')
     answers = ansDatIn['answer']
-    options = ansOptions['options']
 
     #get accuracy from predictions
     correct = []
-    for i,s in trainSeq.items():
-        a = predictSeq(s, options[i])
-        correct.append(1 if a == answers[i] else 0)
+    resp = {}
+    with tqdm(total=len(trainSeq)) as pbar:
+        for i,s in trainSeq.items():
+            if(not i in answers):
+                continue
 
-    return float(sum(correct) / len(correct))
+            try:
+                a = int(predictSeq(class_model, s, opts[i]))
+                print(a)
+                print(answers[i][0])
+                correct.append(1 if a == answers[i][0] else 0)
+                resp[i] = [a,answers[i]]
+            except:
+                print(sys.exc_info()[0])
+                continue
+            pbar.update(1)
+
+    tot_correct = sum(correct)
+    #print accuracy
+    with open('seq_train_acc.txt', 'w') as f:
+        print("Problems evaluated: " + str(len(correct)),file=f)
+        print("# Correct: " + str(tot_correct),file=f)
+        print("Accuracy: " + str(float(tot_correct / len(correct))),file=f)
+
+    #print raw responses
+    with open("seq_train_resp.txt", 'w') as resp_file:
+        print("ID : [prediction, actual]", file=resp_file)
+        for k, v in resp.items():
+            print(str(k) + ": " + str(v), file=resp_file)
+
+    return float(tot_correct / len(correct)), resp
 
 #outputs the test predictions to json (as per the competition instructions)
 def testOut():
     pathTest = "data/seq-private.json"
 
+    class_model = keras.models.load_model("classifier")
+
     #get sequences and answer options
-    testSeq, ansOptions = makeSeq(pathTest)
-    options = ansOptions['options']
+    testSeq, opts = makeSeq(pathTest)
 
     #get predictions
     outAns = {}
-    for i,s in testSeq.items():
-        a = predictSeq(s,options[i])
-        outAns[i] = a
+    with tqdm(total=len(testSeq)) as pbar:
+        for i,s in testSeq.items():
+            try:
+                a = predictSeq(class_model,s,opts[i])
+                outAns[i] = a
+            except:
+                print(sys.exc_info()[0])
+            pbar.update(1)
 
     #export to json
     j = {}
@@ -300,7 +400,10 @@ def testOut():
 
 
 if __name__ == "__main__":
-    print(evalTrain())
+    acc, responses = evalTrain()
+    print(acc)
+    for k, v in responses.items():
+        print(str(k) + ":" + str(v))
     testOut()
 
 
