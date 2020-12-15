@@ -50,21 +50,21 @@ def seq_prep(s, max_len):
 
 #cleans up sequences
 def txt2seq(seq):
-    s2 = []
-    for s in seq:
+    s2 = {}
+    for i,s in seq.items():
         si = re.sub("\(\s?\)","?",s)       #replace parenthesis with question mark
-        a = re.split(',|\s|-',si)      #remove any delimiters
+        a = re.split(',|\s',si)      #remove any delimiters
         a = [e for e in a if e != ""]  #remove empty strings
-        s2.append(a)
+        s2[i] = a
     return s2
 
 #checks for valid sequences (all numbers or fractions excluding ?)
 def findBadSeq(seq):
     badSeqs = {}
-    for a in range(len(seq)):     #check each sequence
+    for a in seq.keys():     #check each sequence
         s = seq[a]
         for i in s:   #check each item (assuming sequence is already split)
-            if(re.match(r'[^0-9\/\?]',i)):    #check if any words or weird characters in the sequence
+            if(re.match(r'[^0-9\/\?\-\.]',i)):    #check if any words or weird characters in the sequence
                 badSeqs[a] = s
                 break
     return badSeqs
@@ -74,7 +74,7 @@ def findBadSeq(seq):
 def remBadSeq(seq):
     badSeqInd = list(findBadSeq(seq).keys())
     goodSeq = {}
-    for i in range(len(seq)):
+    for i in seq.keys():
         if i not in badSeqInd:     #want to keep the indexes to get the answer for it
             goodSeq[i] = seq[i]
     return goodSeq
@@ -105,14 +105,19 @@ def seq2Float(seq):
 def makeSeq(dataPath):
     #read in the raw data
     seqdataIn = pd.read_json(dataPath, orient='records')
-    sequences = seqdataIn['stem']
-    opts = seqdataIn['options']
+    seq1 = seqdataIn['stem']
+    ids = seqdataIn['id']
+    opt1 = seqdataIn['options']
 
-    split_seq = txt2seq(sequences)
+    sequences = dict(zip(ids,seq1))
+    opts = dict(zip(ids,opt1))
+
+    split_seq = txt2seq(pd.Series(sequences))
 
     gs = remBadSeq(split_seq)
 
     fs = seq2Float(gs)
+    print("ye")
 
     return fs, opts
 
@@ -236,8 +241,8 @@ def predictSeq(classifier,seq,options=[]):
 
     #classify sequence
     s = seq[:]
-    classGuesses = classifier.predict(seq_prep([s],17)).tolist()        #get response from the classifier 
-    classType = classGuesses.index(max(classGuesses))
+    classGuesses = classifier.predict(seq_prep([s],17))        #get response from the classifier 
+    classType = np.argmax(classGuesses)
 
 
     if classType == 2:      #hybrid
@@ -249,7 +254,7 @@ def predictSeq(classifier,seq,options=[]):
         if len(options) != 0:
             return getClosestOption(a,options), "hybrid", round(float(a),4)
         else:
-            return a, "hybrid", a[0]
+            return a, "hybrid", a
 
     elif classType == 1:     #index only
         m = makeIndexModel()
@@ -325,8 +330,8 @@ def evalTrain():
             try:
                 a, classPred, rawAns = predictSeq(class_model, s, opts[i])
                 print(a)
-                print(answers[i][0])
-                if len(opts) > 1:
+                print(answers[i])
+                if isinstance(answers[i], list):
                     correct.append(1 if a == answers[i][0] else 0)
                     resp[i] = [a,answers[i][0],classPred,rawAns]
                 else:
@@ -400,7 +405,7 @@ if __name__ == "__main__":
     print(acc)
     for k, v in responses.items():
         print(str(k) + ":" + str(v))
-    #testOut()
+    testOut()
 
 
 

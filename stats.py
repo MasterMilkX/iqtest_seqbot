@@ -1,8 +1,8 @@
-import numpy
+import numpy as np
 import json
-import pandas
+import pandas as pd
 import keras
-from iq_bot import *
+from iq_bot import makeSeq, floatConv
 
 
 pathTrain = "data/seq-public.json"
@@ -10,14 +10,36 @@ pathAns = 'data/seq-public.answer.json'
 
 #reimport training data
 rawTrain = pd.read_json(pathTrain, orient='records')
-rawSeq = rawTrain['stem']
+seq1 = rawTrain['stem']
+ids = rawTrain['id']
+opt1 = rawTrain['options']
+
+rawSeq = dict(zip(ids,seq1))
+rawOpt = dict(zip(ids,opt1))
+
+
+
 
 #parse the sequences
 trainSeq, opts = makeSeq(pathTrain)
 
+
+
+
 #get the answers and answer options
 ansDatIn = pd.read_json(pathAns, orient='index')
 answers = ansDatIn['answer']
+
+
+for i in trainSeq.keys():
+	if not i in answers:
+		continue
+	print('')
+	print("%d : %s + %s" % (i, str(trainSeq[i]),str(opts[i])))
+	print("   = " + str(rawSeq[i]) + " + " + str(rawOpt[i]))
+	print("answer: " + str(answers[i]))
+
+exit(0)
 
 #for guessing sequence class
 class_model = keras.models.load_model("classifier")
@@ -35,6 +57,7 @@ for l in f:
 	#remove brackets
 	a = p[1].replace("]","")
 	a = a.replace("[","")
+	a = a.replace("'","")
 
 	#get elements
 	e = a.split(", ")
@@ -58,52 +81,61 @@ print("")
 
 
 
-models = ["Unknown","Index", "Hybrid"]
+models = ["unknown","index", "hybrid"]
 modelAcc = {}
 for m in models:
 	modelAcc[m] = {"total":0, "correct":0}
 
-qType = ["Multi-choice", "Open"]
+qType = [ "Open","Multi-choice"]
 questAcc = {}
 for q in qType:
 	questAcc[q] = {"total":0, "correct":0}
 
 
 err = []
-for i,seq in trainSeq:
+for i,seq in trainSeq.items():
 	if i in resp:		#certified answered sequence
 
 		'''
 		#classify sequence
-	    s = seq[:]
-	    classGuesses = classifier.predict(seq_prep([s],17)).tolist()        #get response from the classifier 
-	    classType = classGuesses.index(max(classGuesses))
+		s = seq[:]
+		classGuesses = classifier.predict(seq_prep([s],17)).tolist()        #get response from the classifier 
+		classType = classGuesses.index(max(classGuesses))
 		'''
 
 		classType = resp[i]["model"]
 
-	    q = 1 if len(opts[i]) > 1 else 0
+		q = (1 if (len(opts[i]) > 1) else 0)
 
-	    c = (1 if resp[i]["pred"] == resp[i]["real"] else 0)
+		c = (1 if resp[i]["pred"] == resp[i]["real"] else 0)
 
-	    modelAcc[models[classType]]["total"] += 1
-	    modelAcc[models[classType]]["correct"] += c
+		modelAcc[classType]["total"] += 1
+		modelAcc[classType]["correct"] += c
 
-	    questAcc[qType[q]]["total"] += 1
-	    questAcc[qType[q]]["correct"] += c
+		questAcc[qType[q]]["total"] += 1
+		questAcc[qType[q]]["correct"] += c
 
-	    if len(opts[i]) > 1:
-	    	valAns = opts[i][int(resp[i]["real"])]
-	    else:
-	    	valAns = resp[i]["real"]
+		if len(opts[i]) > 1:
+			#print(i)
+			#print(opts[i])
+			#print(int(resp[i]["real"])-1)
+			valAns = floatConv(opts[i][int(resp[i]["real"])-1])
+		else:
+			valAns = floatConv(resp[i]["real"])
 
-	    err.append(abs(valAns-resp[i]["raw"]))
+		#print(valAns)
+		#print(floatConv(resp[i]["raw"]))
+
+		err.append(abs(valAns-floatConv(resp[i]["raw"])))
 
 
 #### CALCULATE THE ACCURACY PER MODEL
 print("---- ACCURACY BY MODEL ----")
 for m in models:
-	p = modelAcc[m]["correct"]/modelAcc[m]["total"]
+	if modelAcc[m]["total"] == 0:
+		p = 0
+	else:
+		p = modelAcc[m]["correct"]/modelAcc[m]["total"]
 	print("%s model: %d / %d = %f" % (m, modelAcc[m]["correct"], modelAcc[m]["total"],p))
 
 
@@ -111,7 +143,10 @@ for m in models:
 #### CALCULATE ACCURACY PER QUESTION ####
 print("---- ACCURACY BY QUESTION TYPE ----")
 for q in qType:
-	p = questAcc[q]["correct"]/questAcc[q]["total"]
+	if questAcc[q]["total"] == 0:
+		p = 0
+	else:
+		p = questAcc[q]["correct"]/questAcc[q]["total"]
 	print("%s question: %d / %d = %f" % (q, questAcc[q]["correct"], questAcc[q]["total"],p))
 
 
