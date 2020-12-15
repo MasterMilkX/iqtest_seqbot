@@ -1,3 +1,3 @@
-Problems evaluated: 892
-# Correct: 221
-Accuracy: 0.24775784753363228
+Problems evaluated: 3
+# Correct: 1
+Accuracy: 0.3333333333333333

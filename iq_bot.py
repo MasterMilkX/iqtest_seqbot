@@ -154,29 +154,6 @@ def seq2RecData(seq,look):
             d_input.append([[seq[i]],[seq[i+1]]])
             d_output.append([[seq[i+2]]])
 
-    '''
-    train_gen = TimeseriesGenerator(seq, seq, length=look, batch_size=1)
-    for i in range(len(train_gen)):
-        x, y = train_gen[i]
-
-        if(y[0] == "?"): #add test
-            u = []
-            for a in x[0]:
-                if(a == "?"):
-                    continue
-                u.append([a])
-            test.append(u)
-            continue
-
-        e = []
-        for b in x[0]:
-            if(b == "?"):
-                continue
-            e.append([b])
-        d_input.append(e)
-        d_output.append(y)
-    '''
-
     return np.array(d_input), np.array(d_output), np.array(test)
 
 def seq2HybridData(seq):
@@ -268,20 +245,20 @@ def predictSeq(classifier,seq,options=[]):
         x, y, test = seq2HybridData(seq)
         m.fit(x, y, epochs=1000, validation_split=0.0, verbose=0,steps_per_epoch=len(x))
 
-        a = np.squeeze(m.predict(test))[0]
+        a = np.squeeze(m.predict(test))
         if len(options) != 0:
-            return getClosestOption(a,options), "hybrid", a
+            return getClosestOption(a,options), "hybrid", round(float(a),4)
         else:
-            return a, "hybrid", a
+            return a, "hybrid", a[0]
 
     elif classType == 1:     #index only
         m = makeIndexModel()
         x, y, test = seq2IndData(seq)
         m.fit(x, y, epochs=500, validation_split=0.0, verbose=0,steps_per_epoch=len(x))
 
-        a = np.squeeze(m.predict(test))[0]
+        a = np.squeeze(m.predict(test))
         if len(options) != 0:
-            return getClosestOption(a,options), "index", a
+            return getClosestOption(a,options), "index", round(float(a),4)
         else:
             return a, "index", a
 
@@ -319,7 +296,7 @@ def predictSeq(classifier,seq,options=[]):
         #return majority answer
         ans = [a1,a2,a3]
         final_a = max(set(ans), key = ans.count) 
-        return final_a, "unknown", raw
+        return final_a, "unknown", round(float(raw),4)
 
 
 # evaluate the training data
@@ -340,6 +317,7 @@ def evalTrain():
     correct = []
     resp = {}
     with tqdm(total=len(trainSeq)) as pbar:
+        #t = 0
         for i,s in trainSeq.items():
             if(not i in answers):
                 continue
@@ -360,6 +338,11 @@ def evalTrain():
                 print(sys.exc_info()[0])
 
             pbar.update(1)
+            '''
+            t+=1
+            if t > 2:
+                break
+            '''
 
     tot_correct = sum(correct)
     #print accuracy
