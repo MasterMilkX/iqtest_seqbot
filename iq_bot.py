@@ -345,7 +345,7 @@ def evalTrain():
                 continue
 
             try:
-                a, rawAns, classPred = predictSeq(class_model, s, opts[i])
+                a, classPred, rawAns = predictSeq(class_model, s, opts[i])
                 print(a)
                 print(answers[i][0])
                 if len(opts) > 1:
