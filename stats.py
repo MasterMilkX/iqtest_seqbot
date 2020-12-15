@@ -31,6 +31,7 @@ ansDatIn = pd.read_json(pathAns, orient='index')
 answers = ansDatIn['answer']
 
 
+'''
 for i in trainSeq.keys():
 	if not i in answers:
 		continue
@@ -40,9 +41,10 @@ for i in trainSeq.keys():
 	print("answer: " + str(answers[i]))
 
 exit(0)
+'''
 
 #for guessing sequence class
-class_model = keras.models.load_model("classifier")
+#class_model = keras.models.load_model("classifier")
 
 
 #read back in the output analysis
@@ -58,9 +60,20 @@ for l in f:
 	a = p[1].replace("]","")
 	a = a.replace("[","")
 	a = a.replace("'","")
+	a = a.replace("array(", "")
+	a = a.replace(", dtype=float32)","")
+
+
+	#if len(opts[i]) == 0:
+	#	print(a)
+
 
 	#get elements
 	e = a.split(", ")
+
+	if(len(e) != 4):
+		continue
+
 	pred = floatConv(e[0])
 	real = floatConv(e[1])
 	modelUsed = e[2]
@@ -151,9 +164,17 @@ for q in qType:
 
 
 #### GET AVERAGE ERROR FROM TRUE ANSWER
-print("---- AVERAGE ERROR FROM TRUE ANSWER ----")
-avg_err = np.mean(np.array(err))
-print("Average error: %f %" % (avg_err*100))
+print("---- \% ANSWERS WITHIN 10\% ----")
+w = 0
+for i in err:
+	if i <= 10:
+		w += 1
+
+ap = w / len(err)
+
+#avg_err = np.mean(np.array(err))
+#print("Average error: " + str((avg_err*100)) +"%")
+print("10 percent error answers: " + str(ap))
 
 
 

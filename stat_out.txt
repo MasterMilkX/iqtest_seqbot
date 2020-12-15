@@ -1,0 +1,14 @@
+---- BAD/GOOD DATA PERCENTAGES ----
+Bad data: 43 / 1076 = 0.039963
+Good data: 1033 / 1076 = 0.960037
+Sequences answered: 987 / 1076 = 0.917286
+
+---- ACCURACY BY MODEL ----
+unknown model: 32 / 112 = 0.285714
+index model: 79 / 305 = 0.259016
+hybrid model: 177 / 570 = 0.310526
+---- ACCURACY BY QUESTION TYPE ----
+Open question: 0 / 92 = 0.000000
+Multi-choice question: 288 / 895 = 0.321788
+---- \% ANSWERS WITHIN 10\% ----
+10 percent error answers: 0.5653495440729484
