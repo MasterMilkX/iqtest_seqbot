@@ -378,7 +378,9 @@ def testOut():
     with tqdm(total=len(testSeq)) as pbar:
         for i,s in testSeq.items():
             try:
-                a = predictSeq(class_model,s,opts[i])
+                a, classPred, rawAns = predictSeq(class_model,s,opts[i])
+                if(isinstance(a,list)):
+                    a = a[0]
                 if len(opts[i]) > 1:
                     print(str(s) + " -> " + str(opts[i][a-1])) 
                 else:
@@ -388,12 +390,13 @@ def testOut():
                 exit(0)
             except:
                 print(sys.exc_info()[0])
+                outAns[i] = 1
             pbar.update(1)
 
     #export to json
     j = {}
     for i,a in outAns.items():
-        j[str(i)] = {"answer":[a]}
+        j[str(i)] = {"answer":[a],"hint":""}
 
     with open('seq-private.answer.json', 'w') as outfile:
         json.dump(j,outfile)
@@ -401,10 +404,10 @@ def testOut():
 
 
 if __name__ == "__main__":
-    acc, responses = evalTrain()
-    print(acc)
-    for k, v in responses.items():
-        print(str(k) + ":" + str(v))
+    #acc, responses = evalTrain()
+    #print(acc)
+    #for k, v in responses.items():
+    #    print(str(k) + ":" + str(v))
     testOut()
 
 
