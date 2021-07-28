@@ -4,12 +4,15 @@ conway.py
 A simple Python/matplotlib implementation of Conway's Game of Life.
 
 Author: Mahesh Venkitachalam
+Modified: Milk Charity
 """
 
 import sys, argparse
 import numpy as np
 import matplotlib.pyplot as plt 
 import matplotlib.animation as animation
+import random
+from tqdm import tqdm
 
 ON = 255
 OFF = 0
@@ -131,6 +134,111 @@ def main():
 
     plt.show()
 
+
+
+
+
+
+##  MILK'S MODS  ##
+
+
+def update2(grid,N):
+    # copy grid since we require 8 neighbors for calculation
+    # and we go line by line 
+    newGrid = grid.copy()
+    for i in range(N):
+        for j in range(N):
+            # compute 8-neghbor sum
+            # using toroidal boundary conditions - x and y wrap around 
+            # so that the simulaton takes place on a toroidal surface.
+            total = int((grid[i, (j-1)%N] + grid[i, (j+1)%N] + 
+                         grid[(i-1)%N, j] + grid[(i+1)%N, j] + 
+                         grid[(i-1)%N, (j-1)%N] + grid[(i-1)%N, (j+1)%N] + 
+                         grid[(i+1)%N, (j-1)%N] + grid[(i+1)%N, (j+1)%N])/255)
+            # apply Conway's rules
+            if grid[i, j]  == ON:
+                if (total < 2) or (total > 3):
+                    newGrid[i, j] = OFF
+            else:
+                if total == 3:
+                    newGrid[i, j] = ON
+    return newGrid
+
+
+
+#create a dataset output for MegaCat
+def makeDataset():
+    # parse arguments
+    parser = argparse.ArgumentParser(description="Runs Conway's Game of Life simulation and saves samples.")
+  # add arguments
+    parser.add_argument('--num_samples', dest='s', required=False)
+    args = parser.parse_args()
+
+    num_samples = 100
+    if args.s:
+        num_samples = int(args.s)
+
+    samp = []
+    with tqdm(total=num_samples) as pbar:
+        for s in range(num_samples):
+            n = 6
+            steps = random.randint(5,15)
+            pbar.set_description(f"Grid size: {n} | Steps: {steps}")
+            samp.append(makeSample(n,steps))
+            pbar.update(1)
+
+
+    exportSamples(samp)
+
+#create a new simulated sample 
+def makeSample(grid_size,steps):
+
+    #create grid
+    grid = randomGrid(grid_size)
+
+    #add gliders and gospers at random in random spots
+    for a in range(10):
+        r = random.random()
+        if r <= 0.3 and grid_size > 3:
+            addGlider(random.randint(0,grid_size-3),random.randint(0,grid_size-3),grid)
+        elif r <= 0.6 and grid_size > 38:
+            addGosperGliderGun(random.randint(0,grid_size-11),random.randint(0,grid_size-38),grid)
+
+    #create sequence
+    grid_set = [[[convOn(x) for x in r] for r in grid.copy()]]
+    for s in range(steps):
+        grid = update2(grid,grid_size)
+        grid_set.append([[convOn(x) for x in r] for r in grid.copy()])
+
+    return np.array(grid_set)
+
+#convert all ons to 1
+def convOn(x):
+    if x == ON:
+        return 1
+    else:
+        return 0
+
+
+#export the samples to a txt file
+def exportSamples(samp,filename="conway_samples.txt"):
+    with open(filename, "w") as f:
+        for s in samp:
+            for g in s:
+                f.write(grid2Str(g))
+                f.write("\n")
+            f.write("\n---\n")
+    f.close()
+    print(f"**COMPLETED** {len(samp)} samples exported to [{filename}] ")
+
+def grid2Str(g):
+    s = ""
+
+    for r in g:
+        s += str("".join([str(i) for i in r])) + "\n"
+
+    return s
+
 # call main
 if __name__ == '__main__':
-    main()
+    makeDataset()
