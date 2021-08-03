@@ -47,6 +47,13 @@ def createBaseTraining(questions, look_back):
 		s = list(map(lambda x: int(x),s))							#convert seq to int format
 		full_seqs.append(s)
 
+	'''
+	
+		NOTE! REPLACE THIS WITH PADDING SO ALL SEQUENCES ARE SAME LENGTH - 
+		DO NOT USE LOOKBACK AND THE GENERATOR
+	
+	'''
+
 
 	#create generator sequences from the complete sequences
 	X = []
@@ -113,7 +120,7 @@ def trainBaseModel(input_shape, domain_name, domain_questions):
 
 	#export it
 	print("-- Exporting model --")
-	base_model.save(f"base_models/base_{domain_name}_model.h5")
+	base_model.save(f"trained_models/base_{domain_name}_model.h5")
 
 
 if __name__ == "__main__":
