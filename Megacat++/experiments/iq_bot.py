@@ -14,6 +14,7 @@ import json
 from keras.preprocessing.sequence import pad_sequences
 from tqdm import tqdm
 import sys
+import os
 
 
 
@@ -22,6 +23,31 @@ import sys
     MODEL AND SEQUENCE FORMATTING
 
 '''
+
+#prep for classifier
+def seq_prep(s, max_len):
+    seq = s[:]
+
+    question = [] #position of question mark
+    seq_len = []
+    for i in range(len(seq)):
+        question.append(seq[i].index('?'))
+        seq_len.append(len(seq[i]))
+        seq[i][question[i]] = 0
+    seq = pad_sequences(seq, padding='post', maxlen=max_len)
+    seq = seq.tolist()
+    mask = []
+    for i in range(len(seq)):
+        mask.append([0] * max_len)
+    for i in range(len(mask)):
+        for j in range(seq_len[i]):
+            mask[i][j] = 1  #assign 1 in the mask sequence for actual values in sequence
+    for i in range(len(mask)):
+        mask[i][question[i]] = 2 #assign 2 in the mask sequence for question mark position
+    seq2 = []
+    for i in range(len(seq)):
+        seq2.append(seq[i]+mask[i])
+    return np.array([np.array(seq2).transpose()])
 
 #turn sequence into index based data 
 def seq2IndData(seq):
@@ -35,7 +61,7 @@ def seq2IndData(seq):
             continue
 
         d_input.append([[i]])
-        d_output.append([[seq[i]]])
+        d_output.append([[int(seq[i])]])
 
     return np.array(d_input), np.array(d_output), np.array(test)
 
@@ -47,11 +73,15 @@ def seq2RecData(seq,look):
     test = []
 
     for i in range(len(seq)-2):
-        if(seq[i+2] == "?"):
-            test.append([[seq[i]],[seq[i+1]]])
+        if(seq[i] == "?" and len(test) == 0):
+            test.append([[0],[0]])
+        elif(seq[i+1] == "?" and len(test) == 0):
+            test.append([[0],[int(seq[i])]])
+        elif(seq[i+2] == "?" and len(test) == 0):
+            test.append([[int(seq[i])],[int(seq[i+1])]])
         elif seq[i] != "?" and seq[i+1] != "?":
-            d_input.append([[seq[i]],[seq[i+1]]])
-            d_output.append([[seq[i+2]]])
+            d_input.append([[int(seq[i])],[int(seq[i+1])]])
+            d_output.append([[int(seq[i+2])]])
 
     return np.array(d_input), np.array(d_output), np.array(test)
 
@@ -61,14 +91,15 @@ def seq2HybridData(seq):
     test = []
 
     for i in range(len(seq)-1):
-        if seq[i+1] == "?":         #add test
-            test.append([[seq[i]],[i]])
+        if seq[i+1] == "?" and len(test) == 0:         #add test
+            test.append([[int(seq[i])],[i]])
             continue
-        elif seq[i] == "?":
+        elif seq[i] == "?" and len(test) == 0:
+            test.append([[-int(seq[i+1])],[i]])
             continue
-
-        d_input.append([[seq[i]],[i]])
-        d_output.append([[seq[i+1]]])
+        elif seq[i] != "?" and seq[i+1] != "?":
+            d_input.append([[int(seq[i])],[i]])
+            d_output.append([[int(seq[i+1])]])
 
     return np.array(d_input), np.array(d_output), np.array(test)
 
@@ -122,8 +153,8 @@ def makeHybridModel():
 def getClosestOption(a,opt):
     d = []
     for i in opt:
-        d.append(abs(a-floatConv(i)))
-    return d.index(min(d))+1
+        d.append(abs(a-float(i)))
+    return d.index(min(d))
 
 
 #predict a sequence using the model options
@@ -136,31 +167,44 @@ def predictSeq(classifier,seq,options=[]):
 
     #classify sequence
     s = seq[:]
-    classGuesses = classifier.predict(seq_prep([s],17))        #get response from the classifier 
+    classGuesses = classifier.predict(seq_prep([s],19))        #get response from the classifier 
     classType = np.argmax(classGuesses)
 
+    # print(classGuesses)
 
-    if classType == 2:      #hybrid
-        m = makeHybridModel()
-        x, y, test = seq2HybridData(seq)
-        m.fit(x, y, epochs=1000, validation_split=0.0, verbose=0,steps_per_epoch=len(x))
+    if classType == 0:      #recursive
+        m = makeRecursiveModel()
+        x, y, test = seq2RecData(seq,2)
+        m.fit(x, y, epochs=500, validation_split=0.0, verbose=0,steps_per_epoch=len(x))
 
-        a = np.squeeze(m.predict(test))
+        a = np.squeeze(m(test, training=False))
         if len(options) != 0:
-            return getClosestOption(a,options), "hybrid", round(float(a),4)
+            return getClosestOption(a,options), "recursive", round(float(a),4)
         else:
-            return a, "hybrid", a
+            return a, "recursive", a
 
     elif classType == 1:     #index only
         m = makeIndexModel()
         x, y, test = seq2IndData(seq)
         m.fit(x, y, epochs=500, validation_split=0.0, verbose=0,steps_per_epoch=len(x))
 
-        a = np.squeeze(m.predict(test))
+        a = np.squeeze(m(test, training=False))
         if len(options) != 0:
             return getClosestOption(a,options), "index", round(float(a),4)
         else:
             return a, "index", a
+
+    elif classType == 2:      #hybrid
+        m = makeHybridModel()
+        x, y, test = seq2HybridData(seq)
+        m.fit(x, y, epochs=1000, validation_split=0.0, verbose=0,steps_per_epoch=len(x))
+
+        a = np.squeeze(m(test, training=False))
+        if len(options) != 0:
+            return getClosestOption(a,options), "hybrid", round(float(a),4)
+        else:
+            return a, "hybrid", a
+
 
     else:       #do all 3 and take most combined or average
         m1 = makeRecursiveModel()
@@ -177,14 +221,25 @@ def predictSeq(classifier,seq,options=[]):
         print(x3)
         '''
 
+        # print(test1)
+        # print(test3)
+
+        # print(seq)
+        # print(x1)
+        # print(y1)
+
         m1.fit(x1, y1, epochs=500, validation_split=0.0, verbose=0,steps_per_epoch=len(x1))
         m2.fit(x2, y2, epochs=500, validation_split=0.0, verbose=0,steps_per_epoch=len(x2))
         m3.fit(x3, y3, epochs=1000, validation_split=0.0, verbose=0,steps_per_epoch=len(x3))
 
-        a1 = np.squeeze(m1.predict(test1))
-        a2 = np.squeeze(m2.predict(test2))
-        a3 = np.squeeze(m3.predict(test3))
-        raw = np.squeeze(m3.predict(test3))     #use hybrid for raw approx
+        a1 = np.squeeze(m1(test1, training=False))
+        a2 = np.squeeze(m2(test2, training=False))
+        a3 = np.squeeze(m3(test3, training=False))
+        raw = np.squeeze(m3(test3, training=False))     #use hybrid for raw approx
+
+        # print(a1)
+        # print(a2)
+        # print(a3)
 
         final_a = None
 

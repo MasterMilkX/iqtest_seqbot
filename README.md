@@ -1,6 +1,6 @@
 # MegaCat
 #### Sequencer bot for the IIJCAI-2020 MAIQ Competition
-Developed by Megan Charity and Catalina Jaramillo
+Developed by M Charity and Catalina Jaramillo
 
 ---
 ### Dependencies

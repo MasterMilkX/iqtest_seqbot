@@ -1,0 +1,51 @@
+[ARITH]
+Accuracy: 0.91
+Error: 0.94
+- - - - - - - - - - - - - - - - 
+ ( hybrid MODEL )
+Accuracy: 0.75
+ ( index MODEL )
+Accuracy: 0.9767
+ ( recursive MODEL )
+Accuracy: 0.8333
+ ( unknown MODEL )
+Accuracy: 1.0
+
+[MARIO]
+Accuracy: 0.56
+Questions within 10% Error: 0.6
+- - - - - - - - - - - - - - - - 
+ ( hybrid MODEL )
+Accuracy: 0.5714285714285714
+ ( index MODEL )
+Accuracy: 0.5454545454545454
+ ( recursive MODEL )
+Accuracy: 0.36363636363636365
+ ( unknown MODEL )
+Accuracy: 0.6666666666666666
+
+[SONGS]
+Accuracy: 0.3069
+Error: 0.2277
+- - - - - - - - - - - - - - - - 
+ ( hybrid MODEL )
+Accuracy: 0.2941
+ ( index MODEL )
+Accuracy: 0.3076
+ ( recursive MODEL )
++ Accuracy: 0.1666
+ ( unknown MODEL )
++ Accuracy: 0.3428
+
+[CELL]
+Accuracy: 0.6237
+Error: 0.0495
+- - - - - - - - - - - - - - - - 
+ ( hybrid MODEL )
+Accuracy: n/a
+ ( index MODEL )
+Accuracy: 0.6041666666666666
+ ( recursive MODEL )
+Accuracy: 1.0
+ ( unknown MODEL )
+Accuracy: 1.0

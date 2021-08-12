@@ -49,8 +49,8 @@ def run_exp(domain, test_type, bot):
 	qeval_ct = 0
 
 	#specific to megacat bot (model type info)
-	megacat_model_ans = {"hybrid":0, "index":0, "recursive":0}
-	megacat_model_correct = {"hybrid":0, "index":0, "recursive":0}
+	megacat_model_ans = {"hybrid":[], "index":[], "recursive":[], "unknown":[]}
+	megacat_model_correct = {"hybrid":0, "index":0, "recursive":0, "unknown":0}
 
 	#import the baseline bot (used a lookback = 3)
 	base_bot = None
@@ -105,7 +105,7 @@ def run_exp(domain, test_type, bot):
 				raw_ans.append(raw_resp)
 				#add megacat specific answer
 				if m_type != None:
-					megacat_model_ans[m_type] += raw_resp
+					megacat_model_ans[m_type].append(raw_resp)
 
 			qeval_ct += 1.0
 			acc = correct/qeval_ct
@@ -114,6 +114,7 @@ def run_exp(domain, test_type, bot):
 			expbar.update(1)
 			expbar.set_description(f"Accuracy: {acc}")
 
+			#print(f"guess i: {resp} | real i: {q['answer']} | options i {q['options']} ----- guess: {raw_resp} | real: {q['options'][int(q['answer'])]}")
 
 
 
@@ -175,7 +176,10 @@ if __name__ == "__main__":
 				print("- - - - - - - - - - - - - - - - ")
 				for m in mmc.keys():
 					print(f" ( {m} MODEL )")
-					print(f"+ Accuracy: {mmc[m]/len(mma[m])}")
+					if len(mma[m]) > 0:
+						print(f"+ Accuracy: {mmc[m]/len(mma[m])}")
+					else:
+						print("+ Accuracy: n/a")
 					print(f"+ Correct: {mmc[m]}")
 
 			print("\n\n")

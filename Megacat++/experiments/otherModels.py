@@ -3,7 +3,7 @@ import numpy as np
 import keras
 import tensorflow as tf
 from keras.models import Sequential
-from keras.layers import LSTM, Dense
+from keras.layers import LSTM, Dense, Embedding
 import sys
 from keras.preprocessing.sequence import TimeseriesGenerator
 import json
@@ -47,13 +47,12 @@ def createBaseTraining(questions, look_back):
 		s = list(map(lambda x: int(x),s))							#convert seq to int format
 		full_seqs.append(s)
 
-	'''
-	
-		NOTE! REPLACE THIS WITH PADDING SO ALL SEQUENCES ARE SAME LENGTH - 
-		DO NOT USE LOOKBACK AND THE GENERATOR
 	
 	'''
 
+		LOOKBACK GENERATOR BASED TRAINING DATA
+
+	'''
 
 	#create generator sequences from the complete sequences
 	X = []
@@ -72,6 +71,7 @@ def createBaseTraining(questions, look_back):
 	X = X.reshape((X.shape[0],look_back,1))
 
 	return X, y
+	
 
 
 '''
@@ -91,6 +91,7 @@ def importJSON(jfile):
 #baseline model with simple RNN with one LSTM layer
 def makeBaseModel(input_shape):
 	model = Sequential()
+	#model.add(Embedding(input_dim=5000, output_dim=16, mask_zero=True))
 	model.add(LSTM(50, activation='relu', input_shape=(input_shape, 1)))
 	model.add(Dense(1))
 	model.compile(optimizer='adam', loss='mse',metrics=['mse'])
@@ -129,7 +130,7 @@ if __name__ == "__main__":
 		exit(1)
 
 	domain = sys.argv[1]
-	fib_look = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+	fib_look = int(sys.argv[2]) if len(sys.argv) > 2 else 2
 	trainBaseModel(fib_look,domain, importJSON(f"question_set/{domain}_train.json")["questions"])
 
 

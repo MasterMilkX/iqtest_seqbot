@@ -1,0 +1,15 @@
+[ARITHMETIC]
+Accuracy: 0.28
+Error: 0.0
+
+[MARIO]
+Accuracy: 0.26
+Error: 0.0
+
+[SONGS]
+Accuracy: 0.2178
+Error: 0.0
+
+[CELL]
+Accuracy: 0.2277
+Error: 0.0

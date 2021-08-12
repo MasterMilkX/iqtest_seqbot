@@ -233,7 +233,7 @@ def toMCQuestion(seq,l,c,p,lib):
 	if random.random() < p:
 		m = len(s)-1              #use last element as missing
 	else:
-		m = random.randint(0,len(s)-1)   #random missing element
+		m = random.randint(2,len(s)-1)   #random missing element
 	
 	#add sequence
 	ans = s[m]
